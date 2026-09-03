@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block title %}Track Delivery | BeautyDrop Canada{% endblock %}{% block content %}
+<section class="auth-shell"><form class="auth-card" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="eyebrow">Live delivery tracking</div><h1>Track your BeautyDrop order</h1><p class="muted">Enter the tracking code provided for your delivery.</p><div class="field"><label>Tracking code</label><input class="input" name="code" placeholder="BD-XXXXXXXX" required maxlength="32" style="text-transform:uppercase"></div><button class="btn btn-primary" style="width:100%">Track delivery</button></form></section>
+{% endblock %}
