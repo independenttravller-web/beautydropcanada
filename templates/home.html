@@ -1,12 +1,598 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BeautyDrop Canada</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeautyDrop Canada | Beauty Delivered</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    color:#21162d;
+    background:#ffffff;
+}
+
+a{
+    text-decoration:none;
+}
+
+header{
+    background:#ffffff;
+    padding:18px 7%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-bottom:1px solid #eee6f7;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.logo{
+    font-size:29px;
+    font-weight:900;
+    color:#6c2bd9;
+}
+
+.logo span{
+    color:#d84fd8;
+}
+
+nav{
+    display:flex;
+    gap:26px;
+    align-items:center;
+}
+
+nav a{
+    color:#43275c;
+    font-weight:700;
+}
+
+.login-btn{
+    background:#6c2bd9;
+    color:white;
+    padding:11px 22px;
+    border-radius:30px;
+}
+
+.hero{
+    min-height:620px;
+    padding:80px 7%;
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    align-items:center;
+    gap:50px;
+    background:
+    radial-gradient(circle at 80% 20%, #f3dcff 0, transparent 35%),
+    linear-gradient(135deg,#fff 35%,#faf5ff);
+}
+
+.badge{
+    display:inline-block;
+    background:#f0e6ff;
+    color:#6c2bd9;
+    font-weight:800;
+    padding:9px 16px;
+    border-radius:30px;
+    margin-bottom:20px;
+}
+
+.hero h1{
+    font-size:64px;
+    line-height:1.05;
+    max-width:720px;
+    margin-bottom:22px;
+}
+
+.hero h1 span{
+    color:#7a31dd;
+}
+
+.hero p{
+    font-size:20px;
+    line-height:1.7;
+    max-width:650px;
+    color:#695a73;
+    margin-bottom:34px;
+}
+
+.buttons{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+.primary{
+    background:linear-gradient(135deg,#6c2bd9,#b33bd2);
+    color:white;
+    padding:15px 27px;
+    border-radius:12px;
+    font-weight:800;
+    box-shadow:0 10px 30px rgba(108,43,217,.25);
+}
+
+.secondary{
+    border:2px solid #6c2bd9;
+    color:#6c2bd9;
+    padding:13px 27px;
+    border-radius:12px;
+    font-weight:800;
+    background:white;
+}
+
+.delivery-card{
+    background:white;
+    border-radius:28px;
+    padding:34px;
+    box-shadow:0 25px 70px rgba(83,34,121,.17);
+}
+
+.delivery-card h3{
+    font-size:25px;
+    margin-bottom:22px;
+}
+
+.status{
+    display:flex;
+    gap:14px;
+    margin:18px 0;
+    align-items:center;
+}
+
+.circle{
+    width:43px;
+    height:43px;
+    border-radius:50%;
+    background:#efe4ff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+}
+
+.status strong{
+    display:block;
+}
+
+.status small{
+    color:#84738d;
+}
+
+.progress{
+    width:100%;
+    height:9px;
+    background:#eee6f6;
+    border-radius:20px;
+    overflow:hidden;
+    margin-top:20px;
+}
+
+.progress div{
+    width:72%;
+    height:100%;
+    background:linear-gradient(90deg,#6c2bd9,#e14fd0);
+}
+
+section{
+    padding:85px 7%;
+}
+
+.section-title{
+    text-align:center;
+    max-width:720px;
+    margin:0 auto 55px;
+}
+
+.section-title h2{
+    font-size:42px;
+    margin-bottom:15px;
+}
+
+.section-title p{
+    color:#786782;
+    font-size:18px;
+    line-height:1.6;
+}
+
+.features{
+    background:#fcf9ff;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:24px;
+}
+
+.feature{
+    background:white;
+    border:1px solid #eee3f8;
+    border-radius:20px;
+    padding:30px;
+}
+
+.feature-icon{
+    width:55px;
+    height:55px;
+    border-radius:16px;
+    background:#eee1ff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:27px;
+    margin-bottom:20px;
+}
+
+.feature h3{
+    margin-bottom:12px;
+    font-size:21px;
+}
+
+.feature p{
+    color:#76677d;
+    line-height:1.6;
+}
+
+.how{
+    background:white;
+}
+
+.steps{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:28px;
+}
+
+.step{
+    text-align:center;
+    padding:25px;
+}
+
+.number{
+    width:60px;
+    height:60px;
+    background:#6c2bd9;
+    color:white;
+    border-radius:50%;
+    margin:0 auto 18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:23px;
+    font-weight:900;
+}
+
+.step h3{
+    margin-bottom:10px;
+}
+
+.step p{
+    color:#74637c;
+    line-height:1.6;
+}
+
+.cta{
+    margin:30px 7% 80px;
+    border-radius:30px;
+    padding:65px;
+    text-align:center;
+    color:white;
+    background:linear-gradient(135deg,#5420b9,#a52bd0,#e052c0);
+}
+
+.cta h2{
+    font-size:42px;
+    margin-bottom:15px;
+}
+
+.cta p{
+    font-size:18px;
+    margin-bottom:28px;
+}
+
+.cta a{
+    display:inline-block;
+    background:white;
+    color:#6727cb;
+    padding:15px 30px;
+    border-radius:12px;
+    font-weight:900;
+}
+
+footer{
+    background:#1f1427;
+    color:#d9cee0;
+    padding:35px 7%;
+    display:flex;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+}
+
+footer strong{
+    color:white;
+}
+
+@media(max-width:900px){
+    .hero{
+        grid-template-columns:1fr;
+        padding-top:55px;
+    }
+
+    .hero h1{
+        font-size:47px;
+    }
+
+    .grid,.steps{
+        grid-template-columns:1fr;
+    }
+
+    nav a:not(.login-btn){
+        display:none;
+    }
+}
+
+@media(max-width:520px){
+    .hero h1{
+        font-size:39px;
+    }
+
+    .hero{
+        padding-left:5%;
+        padding-right:5%;
+    }
+
+    section{
+        padding-left:5%;
+        padding-right:5%;
+    }
+
+    .cta{
+        margin-left:5%;
+        margin-right:5%;
+        padding:45px 22px;
+    }
+}
+</style>
 </head>
+
 <body>
-    <h1>BeautyDrop Canada</h1>
-    <p>Beauty delivery made simple.</p>
+
+<header>
+    <div class="logo">Beauty<span>Drop</span></div>
+
+    <nav>
+        <a href="#how">How It Works</a>
+        <a href="#stores">For Stores</a>
+        <a href="#delivery">Delivery</a>
+        <a class="login-btn" href="/login">Sign In</a>
+    </nav>
+</header>
+
+<div class="hero">
+
+    <div>
+        <div class="badge">BEAUTY DELIVERY ACROSS THE GTA</div>
+
+        <h1>
+            Your beauty products.
+            <span>Delivered.</span>
+        </h1>
+
+        <p>
+            BeautyDrop connects local beauty stores with fast,
+            reliable local delivery. Customers get the products
+            they need without having to make the trip to the store.
+        </p>
+
+        <div class="buttons">
+            <a class="primary" href="/login">Store & Driver Login</a>
+            <a class="secondary" href="#how">How It Works</a>
+        </div>
+    </div>
+
+    <div class="delivery-card">
+
+        <h3>BeautyDrop Delivery</h3>
+
+        <div class="status">
+            <div class="circle">✓</div>
+            <div>
+                <strong>Order received</strong>
+                <small>Beauty store confirmed order</small>
+            </div>
+        </div>
+
+        <div class="status">
+            <div class="circle">🛍</div>
+            <div>
+                <strong>Picked up</strong>
+                <small>Pickup code verified</small>
+            </div>
+        </div>
+
+        <div class="status">
+            <div class="circle">🚗</div>
+            <div>
+                <strong>On the way</strong>
+                <small>Your BeautyDrop driver is coming</small>
+            </div>
+        </div>
+
+        <div class="status">
+            <div class="circle">📍</div>
+            <div>
+                <strong>Delivered</strong>
+                <small>Customer PIN confirms delivery</small>
+            </div>
+        </div>
+
+        <div class="progress">
+            <div></div>
+        </div>
+
+    </div>
+
+</div>
+
+<section class="features" id="delivery">
+
+    <div class="section-title">
+        <h2>Built for beauty delivery</h2>
+        <p>
+            A delivery system made for beauty supply stores,
+            customers and local drivers.
+        </p>
+    </div>
+
+    <div class="grid">
+
+        <div class="feature">
+            <div class="feature-icon">⚡</div>
+            <h3>Fast Local Delivery</h3>
+            <p>
+                Local drivers pick up orders directly from participating
+                beauty stores and deliver them to customers.
+            </p>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">🔐</div>
+            <h3>Verified Pickup</h3>
+            <p>
+                Drivers confirm pickup using a secure pickup code,
+                creating a record of when an order leaves the store.
+            </p>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">✓</div>
+            <h3>Proof of Delivery</h3>
+            <p>
+                Customer PIN verification and delivery records help
+                confirm that each order reached the customer.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+
+<section class="how" id="how">
+
+    <div class="section-title">
+        <h2>How BeautyDrop works</h2>
+        <p>
+            Simple delivery without asking beauty stores to rebuild
+            their entire online store.
+        </p>
+    </div>
+
+    <div class="steps">
+
+        <div class="step">
+            <div class="number">1</div>
+            <h3>Customer orders</h3>
+            <p>
+                The customer places an order with their beauty store.
+            </p>
+        </div>
+
+        <div class="step">
+            <div class="number">2</div>
+            <h3>Store requests BeautyDrop</h3>
+            <p>
+                The store creates the delivery inside its BeautyDrop dashboard.
+            </p>
+        </div>
+
+        <div class="step">
+            <div class="number">3</div>
+            <h3>Driver delivers</h3>
+            <p>
+                A driver picks up the order and completes verified delivery.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+
+<section class="features" id="stores">
+
+    <div class="section-title">
+        <h2>One system. Three dashboards.</h2>
+        <p>
+            BeautyDrop keeps stores, drivers and administrators
+            connected to the same delivery.
+        </p>
+    </div>
+
+    <div class="grid">
+
+        <div class="feature">
+            <div class="feature-icon">🏪</div>
+            <h3>Beauty Stores</h3>
+            <p>
+                Create deliveries, see delivery fees and track orders
+                belonging to your store.
+            </p>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">🚙</div>
+            <h3>Drivers</h3>
+            <p>
+                View deliveries, verify pickups, update delivery status
+                and complete orders.
+            </p>
+        </div>
+
+        <div class="feature">
+            <div class="feature-icon">📊</div>
+            <h3>BeautyDrop Admin</h3>
+            <p>
+                Manage stores, drivers, delivery assignments,
+                invoices and delivery records.
+            </p>
+        </div>
+
+    </div>
+
+</section>
+
+<div class="cta">
+
+    <h2>Beauty products should come to you.</h2>
+
+    <p>
+        BeautyDrop Canada is building a faster way for local
+        beauty stores to reach their customers.
+    </p>
+
+    <a href="/login">Open BeautyDrop</a>
+
+</div>
+
+<footer>
+
+    <div>
+        <strong>BeautyDrop Canada</strong><br>
+        Local beauty delivery.
+    </div>
+
+    <div>
+        © 2026 BeautyDrop Canada
+    </div>
+
+</footer>
+
 </body>
 </html>
