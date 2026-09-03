@@ -2,17 +2,75 @@ services:
   - type: web
     name: beautydrop-canada
     runtime: python
-    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn --workers 2 --threads 4 --timeout 60 app:app
     healthCheckPath: /health
     envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SESSION_HOURS
+        value: "8"
       - key: DATABASE_URL
         fromDatabase:
           name: beautydrop-db
           property: connectionString
-      - key: SECRET_KEY
-        generateValue: true
+      - key: RATELIMIT_STORAGE_URI
+        fromService:
+          type: keyvalue
+          name: beautydrop-rate-limit
+          property: connectionString
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: TAX_RATE
+        value: "0"
+      - key: CURRENCY
+        value: "cad"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_REGION
+        value: "auto"
+      - key: PHOTO_RETENTION_DAYS
+        value: "90"
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
+  - type: keyvalue
+    name: beautydrop-rate-limit
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
 
 databases:
   - name: beautydrop-db
