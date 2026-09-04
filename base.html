@@ -18,6 +18,7 @@
       <a href="{{ url_for('pricing') }}">Pricing</a>
       <a href="{{ url_for('tracking_search') }}">Track Order</a>
       <a href="{{ url_for('about') }}">About</a>
+      <a href="{{ url_for('contact') }}">Contact</a>
     </nav>
     <div class="nav-actions">
       {% if me %}
@@ -28,7 +29,8 @@
         </form>
       {% else %}
         <a class="btn btn-secondary btn-small" href="{{ url_for('login') }}">Sign in</a>
-        <a class="btn btn-primary btn-small" href="{{ url_for('store_signup') }}">Join as a Store</a>
+        <a class="btn btn-soft btn-small" href="{{ url_for('driver_signup') }}">Become a Driver</a>
+        <a class="btn btn-primary btn-small" href="{{ url_for('store_signup') }}">Partner With Us</a>
       {% endif %}
     </div>
   </div>

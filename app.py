@@ -52,8 +52,8 @@ migrate = Migrate(app, db)
 csrf = CSRFProtect(app)
 limiter = Limiter(key_func=get_remote_address, app=app, default_limits=["300 per hour"], storage_uri=os.environ.get("RATELIMIT_STORAGE_URI", "memory://"))
 
-STATUSES = ["DISPATCHED", "ASSIGNED", "PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERED", "FAILED", "RETURNED", "CANCELLED"]
-MANUAL_DRIVER_STATUSES = ["IN_TRANSIT", "OUT_FOR_DELIVERY", "FAILED", "RETURNED"]
+STATUSES = ["UPCOMING", "WAITING_FOR_DRIVER", "DRIVER_ASSIGNED", "DRIVER_ARRIVING", "PICKED_UP", "IN_TRANSIT", "ARRIVING", "DELIVERED", "DELIVERY_ATTEMPTED", "RETURNED", "CANCELLED"]
+MANUAL_DRIVER_STATUSES = ["DRIVER_ARRIVING", "IN_TRANSIT", "ARRIVING", "DELIVERY_ATTEMPTED", "RETURNED"]
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
 
@@ -165,6 +165,47 @@ class AgreementAcceptance(db.Model):
     accepted_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class StoreProfile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), unique=True, nullable=False, index=True)
+    phone = db.Column(db.String(40))
+    address = db.Column(db.Text)
+    city = db.Column(db.String(120))
+    province = db.Column(db.String(80), default="Ontario")
+    postal_code = db.Column(db.String(20))
+    website = db.Column(db.String(255))
+    business_number = db.Column(db.String(80))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class DeliverySchedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    delivery_id = db.Column(db.Integer, db.ForeignKey("delivery.id"), unique=True, nullable=False, index=True)
+    customer_email = db.Column(db.String(255))
+    order_value = db.Column(db.Numeric(10, 2), default=0)
+    scheduled_for = db.Column(db.DateTime)
+    delivery_window = db.Column(db.String(80))
+    timing = db.Column(db.String(20), default="asap")
+    estimated_minutes_min = db.Column(db.Integer)
+    estimated_minutes_max = db.Column(db.Integer)
+    tax = db.Column(db.Numeric(10, 2), default=0)
+    total = db.Column(db.Numeric(10, 2), default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class PricingConfig(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    base_fee = db.Column(db.Numeric(10, 2), default=6.99)
+    included_km = db.Column(db.Float, default=3)
+    per_km = db.Column(db.Numeric(10, 2), default=1.25)
+    minimum_fee = db.Column(db.Numeric(10, 2), default=8.99)
+    maximum_radius = db.Column(db.Float, default=50)
+    tax_rate = db.Column(db.Numeric(8, 4), default=0.13)
+    rush_surcharge = db.Column(db.Numeric(10, 2), default=7.00)
+    wait_time_surcharge = db.Column(db.Numeric(10, 2), default=0)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def now():
     return datetime.utcnow()
 
@@ -193,20 +234,31 @@ def password_ok(password, stored):
     return legacy_password_ok(password, stored)
 
 
+def pricing_config():
+    cfg = PricingConfig.query.order_by(PricingConfig.id.asc()).first()
+    if not cfg:
+        cfg = PricingConfig()
+        db.session.add(cfg)
+        db.session.commit()
+    return cfg
+
+
 def price(km, svc):
-    if km <= 5:
-        fee = 9.99
-    elif km <= 10:
-        fee = 12.99
-    elif km <= 15:
-        fee = 16.99
-    elif km <= 20:
-        fee = 21.99
-    elif km <= 30:
-        fee = 27.99
-    else:
-        fee = 27.99 + (km - 30) * 1.25
-    return round(fee + (7 if svc == "express" else 0), 2)
+    cfg = pricing_config()
+    km = max(0, float(km or 0))
+    included = float(cfg.included_km or 0)
+    fee = float(cfg.base_fee or 0) + max(0, km - included) * float(cfg.per_km or 0)
+    fee = max(float(cfg.minimum_fee or 0), fee)
+    if svc == "express":
+        fee += float(cfg.rush_surcharge or 0)
+    return round(fee, 2)
+
+
+def estimate_minutes(km):
+    km = max(0, float(km or 0))
+    low = max(20, int(20 + km * 1.6))
+    high = max(low + 10, int(35 + km * 2.0))
+    return low, high
 
 
 def tax_amount(amount):
@@ -351,7 +403,7 @@ def security_headers(response):
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html", pricing=pricing_config())
 
 
 @app.route("/about")
@@ -432,8 +484,15 @@ def store_signup():
         store_name = request.form.get("store_name", "").strip()[:160]
         email = request.form.get("email", "").strip().lower()[:255]
         password = request.form.get("password", "")
-        if not name or not store_name or "@" not in email or len(password) < 10:
-            flash("Use a valid email and a password with at least 10 characters.", "error")
+        phone = request.form.get("phone", "").strip()[:40]
+        address = request.form.get("address", "").strip()[:500]
+        city = request.form.get("city", "").strip()[:120]
+        province = request.form.get("province", "Ontario").strip()[:80]
+        postal_code = request.form.get("postal_code", "").strip()[:20]
+        website = request.form.get("website", "").strip()[:255]
+        business_number = request.form.get("business_number", "").strip()[:80]
+        if not name or not store_name or "@" not in email or len(password) < 10 or not phone or not address or not city or not postal_code:
+            flash("Complete all required store fields and use a password with at least 10 characters.", "error")
             return render_template("store_signup.html")
         if request.form.get("merchant_terms") != "yes":
             flash("You must accept the merchant terms to apply.", "error")
@@ -441,16 +500,45 @@ def store_signup():
         user = User(name=name, email=email, password_hash=hash_password(password), role="store", store_name=store_name, active=False)
         try:
             db.session.add(user)
+            db.session.flush()
+            db.session.add(StoreProfile(user_id=user.id, phone=phone, address=address, city=city, province=province, postal_code=postal_code, website=website, business_number=business_number))
+            db.session.add(AgreementAcceptance(user_id=user.id, agreement="merchant_terms", version="2026-09-03"))
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
             flash("An account with that email already exists.", "error")
             return render_template("store_signup.html")
-        db.session.add(AgreementAcceptance(user_id=user.id, agreement="merchant_terms", version="2026-09-03"))
-        db.session.commit()
         flash("Your store application was received. BeautyDrop must approve the account before sign-in.", "ok")
         return redirect(url_for("login"))
     return render_template("store_signup.html")
+
+
+@app.route("/signup/driver", methods=["GET", "POST"])
+@limiter.limit("5 per hour", methods=["POST"])
+def driver_signup():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()[:120]
+        email = request.form.get("email", "").strip().lower()[:255]
+        password = request.form.get("password", "")
+        if not name or "@" not in email or len(password) < 10:
+            flash("Complete all required fields and use a password with at least 10 characters.", "error")
+            return render_template("driver_signup.html")
+        if request.form.get("driver_terms") != "yes":
+            flash("You must accept the driver agreement to apply.", "error")
+            return render_template("driver_signup.html")
+        user = User(name=name, email=email, password_hash=hash_password(password), role="driver", active=False)
+        try:
+            db.session.add(user)
+            db.session.flush()
+            db.session.add(AgreementAcceptance(user_id=user.id, agreement="driver_terms", version="2026-09-03"))
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("An account with that email already exists.", "error")
+            return render_template("driver_signup.html")
+        flash("Your driver application was received. BeautyDrop must approve the account before sign-in.", "ok")
+        return redirect(url_for("login"))
+    return render_template("driver_signup.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -468,9 +556,15 @@ def login():
             session["uid"] = user.id
             session.permanent = True
             next_url = request.args.get("next")
-            if not next_url or not next_url.startswith("/") or next_url.startswith("//"):
-                next_url = url_for("dashboard")
-            return redirect(next_url)
+            if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+                return redirect(next_url)
+            destinations = {"store": "store", "driver": "driver", "admin": "admin"}
+            endpoint = destinations.get(user.role)
+            if not endpoint:
+                session.clear()
+                flash("Your account role is not configured. Contact BeautyDrop support.", "error")
+                return redirect(url_for("login"))
+            return redirect(url_for(endpoint))
         flash("Invalid email or password.", "error")
     return render_template("login.html")
 
@@ -528,64 +622,147 @@ def reset_password(token):
 @app.route("/dashboard")
 @guard()
 def dashboard():
-    return redirect(url_for(me().role))
+    user = me()
+    destinations = {"store": "store", "driver": "driver", "admin": "admin"}
+    endpoint = destinations.get(user.role)
+    if not endpoint:
+        abort(403)
+    return redirect(url_for(endpoint))
 
 
-@app.route("/store", methods=["GET", "POST"])
+@app.route("/store")
+@app.route("/store-dashboard")
 @guard("store")
 def store():
     user = me()
+    rows = Delivery.query.filter_by(store_name=user.store_name).order_by(Delivery.id.desc()).all()
+    schedules = {m.delivery_id: m for m in DeliverySchedule.query.filter(DeliverySchedule.delivery_id.in_([d.id for d in rows] or [-1])).all()}
+    upcoming_statuses = {"UPCOMING", "WAITING_FOR_DRIVER", "DRIVER_ASSIGNED", "DRIVER_ARRIVING"}
+    active_statuses = {"PICKED_UP", "IN_TRANSIT", "ARRIVING"}
+    stats = {
+        "active": sum(d.status in active_statuses for d in rows),
+        "upcoming": sum(d.status in upcoming_statuses for d in rows),
+        "delivered": sum(d.status == "DELIVERED" for d in rows),
+        "month_spend": sum(float(d.fee or 0) for d in rows if d.created_at and d.created_at.strftime("%Y-%m") == now().strftime("%Y-%m")),
+    }
+    return render_template("store.html", rows=rows, schedules=schedules, stats=stats)
+
+
+@app.route("/store-dashboard/create-delivery", methods=["GET", "POST"])
+@guard("store")
+def create_delivery():
+    user = me()
+    profile = StoreProfile.query.filter_by(user_id=user.id).first()
+    cfg = pricing_config()
     if request.method == "POST":
         customer = request.form.get("customer", "").strip()[:160]
         phone = request.form.get("phone", "").strip()[:40]
+        email = request.form.get("customer_email", "").strip().lower()[:255]
         address = request.form.get("address", "").strip()[:500]
+        timing = request.form.get("timing", "asap")
+        if timing not in ("asap", "scheduled"):
+            timing = "asap"
         if not customer or not phone or not address:
-            flash("Customer name, phone and address are required.", "error")
-            return redirect(url_for("store"))
+            flash("Customer name, phone and delivery address are required.", "error")
+            return render_template("create_delivery.html", pricing=cfg, profile=profile)
         try:
-            km = max(0, min(300, float(request.form.get("km") or 0)))
+            km = max(0, min(float(cfg.maximum_radius or 50), float(request.form.get("km") or 0)))
             packages = max(1, min(50, int(request.form.get("packages") or 1)))
-        except ValueError:
-            flash("Enter a valid distance and package count.", "error")
-            return redirect(url_for("store"))
+            order_value = max(Decimal("0"), Decimal(request.form.get("order_value") or "0"))
+        except Exception:
+            flash("Enter a valid distance, package count and order value.", "error")
+            return render_template("create_delivery.html", pricing=cfg, profile=profile)
         if request.form.get("sms_consent") != "yes":
             flash("Confirm the customer requested delivery and transactional delivery updates.", "error")
-            return redirect(url_for("store"))
+            return render_template("create_delivery.html", pricing=cfg, profile=profile)
         svc = request.form.get("service", "standard")
         if svc not in ("standard", "express"):
             svc = "standard"
+        scheduled_for = None
+        delivery_window = request.form.get("delivery_window", "")[:80]
+        if timing == "scheduled":
+            raw_date = request.form.get("delivery_date", "").strip()
+            raw_time = request.form.get("delivery_time", "").strip()
+            try:
+                scheduled_for = datetime.strptime(f"{raw_date} {raw_time}", "%Y-%m-%d %H:%M")
+            except ValueError:
+                flash("Choose a valid scheduled delivery date and time.", "error")
+                return render_template("create_delivery.html", pricing=cfg, profile=profile)
+            if scheduled_for < now() - timedelta(minutes=5):
+                flash("Scheduled delivery time must be in the future.", "error")
+                return render_template("create_delivery.html", pricing=cfg, profile=profile)
+        base_fee = Decimal(str(price(km, svc)))
+        tax = (base_fee * Decimal(str(cfg.tax_rate or 0))).quantize(Decimal("0.01"))
+        total = base_fee + tax
+        mins_low, mins_high = estimate_minutes(km)
         delivery = Delivery(
-            code="BD-" + secrets.token_hex(8).upper(),
-            store_name=user.store_name,
-            customer=customer,
-            phone=phone,
-            address=address,
-            order_number=request.form.get("order_number", "").strip()[:80],
-            packages=packages,
-            km=km,
-            service=svc,
-            instructions=request.form.get("instructions", "").strip()[:1000],
-            fee=price(km, svc),
-            status="DISPATCHED",
-            pickup_code=secrets.token_hex(3).upper(),
-            delivery_pin=str(secrets.randbelow(900000) + 100000),
+            code="BD-" + secrets.token_hex(6).upper(), store_name=user.store_name, customer=customer, phone=phone, address=address,
+            order_number=request.form.get("order_number", "").strip()[:80], packages=packages, km=km, service=svc,
+            instructions=request.form.get("instructions", "").strip()[:1000], fee=base_fee,
+            status="UPCOMING" if timing == "scheduled" else "WAITING_FOR_DRIVER",
+            pickup_code=secrets.token_hex(3).upper(), delivery_pin=str(secrets.randbelow(900000) + 100000),
         )
         db.session.add(delivery)
         db.session.flush()
-        add_event(delivery, "DISPATCHED", "Merchant created delivery.")
+        db.session.add(DeliverySchedule(delivery_id=delivery.id, customer_email=email, order_value=order_value, scheduled_for=scheduled_for, delivery_window=delivery_window, timing=timing, estimated_minutes_min=mins_low, estimated_minutes_max=mins_high, tax=tax, total=total))
+        add_event(delivery, delivery.status, "Merchant created delivery request.")
         db.session.add(Consent(delivery_id=delivery.id, consent_type="transactional_sms_delivery_updates", captured_by=user.id))
         db.session.commit()
         send_sms(phone, f"BeautyDrop: your delivery {delivery.code} was created. Track: {url_for('track', code=delivery.code, _external=True)}")
         flash(f"Delivery {delivery.code} created.", "ok")
-        return redirect(url_for("store"))
+        return redirect(url_for("store_delivery_detail", did=delivery.id))
+    return render_template("create_delivery.html", pricing=cfg, profile=profile)
 
-    rows = Delivery.query.filter_by(store_name=user.store_name).order_by(Delivery.id.desc()).all()
-    stats = {
-        "active": sum(d.status not in ("DELIVERED", "RETURNED", "CANCELLED") for d in rows),
-        "delivered": sum(d.status == "DELIVERED" for d in rows),
-        "month_spend": sum(float(d.fee or 0) for d in rows if d.created_at and d.created_at.strftime("%Y-%m") == now().strftime("%Y-%m")),
-    }
-    return render_template("store.html", rows=rows, stats=stats)
+
+@app.get("/store-dashboard/delivery/<int:did>")
+@guard("store")
+def store_delivery_detail(did):
+    delivery = db.session.get(Delivery, did)
+    if not delivery or delivery.store_name != me().store_name:
+        abort(404)
+    schedule = DeliverySchedule.query.filter_by(delivery_id=delivery.id).first()
+    events = Event.query.filter_by(delivery_id=delivery.id).order_by(Event.id).all()
+    driver_user = db.session.get(User, delivery.driver_id) if delivery.driver_id else None
+    return render_template("store_delivery_detail.html", d=delivery, schedule=schedule, events=events, driver_user=driver_user)
+
+
+@app.route("/store-dashboard/delivery/<int:did>/edit", methods=["GET", "POST"])
+@guard("store")
+def edit_store_delivery(did):
+    delivery = db.session.get(Delivery, did)
+    if not delivery or delivery.store_name != me().store_name:
+        abort(404)
+    if delivery.status not in ("UPCOMING", "WAITING_FOR_DRIVER", "DRIVER_ASSIGNED"):
+        flash("This delivery can no longer be edited because pickup has started.", "error")
+        return redirect(url_for("store_delivery_detail", did=did))
+    schedule = DeliverySchedule.query.filter_by(delivery_id=delivery.id).first()
+    if request.method == "POST":
+        delivery.customer = request.form.get("customer", delivery.customer).strip()[:160]
+        delivery.phone = request.form.get("phone", delivery.phone).strip()[:40]
+        delivery.address = request.form.get("address", delivery.address).strip()[:500]
+        delivery.instructions = request.form.get("instructions", delivery.instructions or "").strip()[:1000]
+        try:
+            delivery.km = max(0, min(float(pricing_config().maximum_radius or 50), float(request.form.get("km") or delivery.km)))
+        except ValueError:
+            pass
+        delivery.fee = Decimal(str(price(delivery.km, delivery.service)))
+        if schedule:
+            try:
+                raw_date = request.form.get("delivery_date", "").strip()
+                raw_time = request.form.get("delivery_time", "").strip()
+                if raw_date and raw_time:
+                    schedule.scheduled_for = datetime.strptime(f"{raw_date} {raw_time}", "%Y-%m-%d %H:%M")
+                schedule.delivery_window = request.form.get("delivery_window", schedule.delivery_window or "")[:80]
+                schedule.tax = (Decimal(delivery.fee) * Decimal(str(pricing_config().tax_rate or 0))).quantize(Decimal("0.01"))
+                schedule.total = Decimal(delivery.fee) + Decimal(schedule.tax)
+            except ValueError:
+                flash("Date/time format was not valid.", "error")
+                return render_template("edit_delivery.html", d=delivery, schedule=schedule)
+        add_event(delivery, "UPDATED", "Merchant updated delivery before pickup.")
+        db.session.commit()
+        flash("Delivery updated.", "ok")
+        return redirect(url_for("store_delivery_detail", did=did))
+    return render_template("edit_delivery.html", d=delivery, schedule=schedule)
 
 
 @app.route("/store/products", methods=["GET", "POST"])
@@ -630,6 +807,7 @@ def store_invoices():
 
 
 @app.route("/driver")
+@app.route("/driver-dashboard")
 @guard("driver")
 def driver():
     user = me()
@@ -710,7 +888,7 @@ def status(did):
     delivery.status = status_value
     add_event(delivery, status_value, "Driver status update.")
     db.session.commit()
-    if status_value in ("OUT_FOR_DELIVERY", "FAILED"):
+    if status_value in ("ARRIVING", "DELIVERY_ATTEMPTED"):
         send_sms(delivery.phone, f"BeautyDrop update for {delivery.code}: {status_value.replace('_', ' ').title()}.")
     return redirect(url_for("driver"))
 
@@ -721,7 +899,7 @@ def cancel_delivery(did):
     delivery = db.session.get(Delivery, did)
     if not delivery or delivery.store_name != me().store_name:
         abort(404)
-    if delivery.status not in ("DISPATCHED", "ASSIGNED"):
+    if delivery.status not in ("UPCOMING", "WAITING_FOR_DRIVER", "DRIVER_ASSIGNED"):
         flash("This delivery can no longer be cancelled from the store dashboard.", "error")
         return redirect(url_for("store"))
     delivery.status = "CANCELLED"
@@ -733,6 +911,7 @@ def cancel_delivery(did):
 
 
 @app.route("/admin")
+@app.route("/admin-dashboard")
 @guard("admin")
 def admin():
     deliveries = Delivery.query.order_by(Delivery.id.desc()).limit(150).all()
@@ -753,7 +932,7 @@ def admin():
         "email": bool(os.environ.get("SMTP_HOST")),
         "monitoring": bool(os.environ.get("SENTRY_DSN")),
     }
-    return render_template("admin.html", deliveries=deliveries, stores=stores, drivers=drivers, invoices=invoices, payments=payments, stats=stats, integrations=integrations)
+    return render_template("admin.html", deliveries=deliveries, stores=stores, drivers=drivers, invoices=invoices, payments=payments, stats=stats, integrations=integrations, pricing=pricing_config())
 
 
 @app.post("/admin/assign/<int:did>")
@@ -767,8 +946,8 @@ def assign(did):
     if not delivery or not driver_user or driver_user.role != "driver" or not driver_user.active:
         abort(400)
     delivery.driver_id = driver_user.id
-    delivery.status = "ASSIGNED"
-    add_event(delivery, "ASSIGNED", f"Assigned to {driver_user.name}.")
+    delivery.status = "DRIVER_ASSIGNED"
+    add_event(delivery, "DRIVER_ASSIGNED", f"Assigned to {driver_user.name}.")
     db.session.commit()
     flash(f"{delivery.code} assigned to {driver_user.name}.", "ok")
     return redirect(url_for("admin"))
@@ -943,6 +1122,48 @@ def export_csv():
     for delivery in Delivery.query.order_by(Delivery.id.desc()).all():
         writer.writerow([delivery.code, delivery.store_name, delivery.customer, delivery.status, delivery.fee, delivery.created_at, delivery.picked_up_at, delivery.delivered_at])
     return send_file(io.BytesIO(out.getvalue().encode()), mimetype="text/csv", as_attachment=True, download_name="beautydrop-deliveries.csv")
+
+
+@app.post("/admin/pricing")
+@guard("admin")
+def update_pricing():
+    cfg = pricing_config()
+    try:
+        cfg.base_fee = Decimal(request.form.get("base_fee", str(cfg.base_fee)))
+        cfg.included_km = float(request.form.get("included_km", cfg.included_km))
+        cfg.per_km = Decimal(request.form.get("per_km", str(cfg.per_km)))
+        cfg.minimum_fee = Decimal(request.form.get("minimum_fee", str(cfg.minimum_fee)))
+        cfg.maximum_radius = float(request.form.get("maximum_radius", cfg.maximum_radius))
+        cfg.tax_rate = Decimal(request.form.get("tax_rate", str(cfg.tax_rate)))
+        cfg.rush_surcharge = Decimal(request.form.get("rush_surcharge", str(cfg.rush_surcharge)))
+        cfg.wait_time_surcharge = Decimal(request.form.get("wait_time_surcharge", str(cfg.wait_time_surcharge)))
+        if cfg.maximum_radius <= 0 or cfg.per_km < 0 or cfg.minimum_fee < 0 or cfg.tax_rate < 0:
+            raise ValueError
+    except Exception:
+        flash("Enter valid non-negative pricing values.", "error")
+        return redirect(url_for("admin"))
+    db.session.commit()
+    flash("Delivery pricing updated.", "ok")
+    return redirect(url_for("admin"))
+
+
+@app.get("/api/estimate")
+@limiter.limit("120 per hour")
+def estimate_api():
+    try:
+        km = float(request.args.get("km", "0"))
+    except ValueError:
+        return jsonify(error="invalid_distance"), 400
+    cfg = pricing_config()
+    if km < 0 or km > float(cfg.maximum_radius or 50):
+        return jsonify(error="outside_service_radius", maximum_radius=float(cfg.maximum_radius or 50)), 400
+    svc = request.args.get("service", "standard")
+    if svc not in ("standard", "express"):
+        svc = "standard"
+    fee = Decimal(str(price(km, svc)))
+    tax = (fee * Decimal(str(cfg.tax_rate or 0))).quantize(Decimal("0.01"))
+    low, high = estimate_minutes(km)
+    return jsonify(km=round(km,1), fee=float(fee), tax=float(tax), total=float(fee+tax), eta_min=low, eta_max=high, service=svc)
 
 
 @app.route("/track", methods=["GET", "POST"])

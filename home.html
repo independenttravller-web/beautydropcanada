@@ -1,31 +1,40 @@
 {% extends "base.html" %}{% block content %}
 <section class="hero"><div class="container hero-grid">
   <div>
-    <div class="eyebrow">Fast local beauty delivery</div>
+    <div class="eyebrow">Beauty delivery across the GTA</div>
     <h1>Your beauty products. <span class="gradient-text">Delivered.</span></h1>
-    <p class="lead">BeautyDrop gives local beauty stores a professional delivery system without forcing them to rebuild their online store. Stores dispatch, drivers deliver, customers track.</p>
-    <div class="hero-actions"><a class="btn btn-primary" href="{{ url_for('store_signup') }}">Start delivering with BeautyDrop</a><a class="btn btn-secondary" href="{{ url_for('tracking_search') }}">Track an order</a></div>
-    <div class="trust-row"><span>✓ Verified pickup</span><span>✓ Customer delivery PIN</span><span>✓ Live tracking</span><span>✓ Proof of delivery</span></div>
+    <p class="lead">Fast, reliable local delivery connecting beauty stores, drivers and customers with secure pickup, live tracking and proof of delivery.</p>
+    <div class="hero-actions"><a class="btn btn-primary" href="{{ url_for('store_signup') }}">Partner With Us</a><a class="btn btn-secondary" href="{{ url_for('driver_signup') }}">Become a Driver</a><a class="btn btn-soft" href="{{ url_for('tracking_search') }}">Track Delivery</a></div>
+    <div class="trust-row"><span>✓ Verified pickup</span><span>✓ Customer PIN</span><span>✓ Live tracking</span><span>✓ Proof of delivery</span></div>
   </div>
   <div class="app-card">
-    <div class="app-top"><div><strong>BD-83A7F21C</strong><div class="muted small">Demo delivery • Beauty supply order</div></div><span class="status-pill">● On the way</span></div>
-    <div class="delivery-step"><div class="step-icon">✓</div><div><strong>Order received</strong><small>Store confirmed the delivery request</small></div></div>
-    <div class="delivery-step"><div class="step-icon">🛍️</div><div><strong>Pickup verified</strong><small>Driver confirmed the secure pickup code</small></div></div>
-    <div class="delivery-step"><div class="step-icon">🚗</div><div><strong>Driver en route</strong><small>Customer receives delivery updates</small></div></div>
-    <div class="delivery-step"><div class="step-icon">📍</div><div><strong>Secure handoff</strong><small>Customer PIN and proof confirm delivery</small></div></div>
+    <div class="app-top"><div><strong>BeautyDrop Delivery</strong><div class="muted small">Secure store-to-door workflow</div></div><span class="status-pill">● On the way</span></div>
+    <div class="delivery-step"><div class="step-icon">✓</div><div><strong>Order confirmed</strong><small>The store creates the delivery request</small></div></div>
+    <div class="delivery-step"><div class="step-icon">🛍️</div><div><strong>Pickup verified</strong><small>Driver confirms the secure pickup code</small></div></div>
+    <div class="delivery-step"><div class="step-icon">🚗</div><div><strong>Driver on the way</strong><small>Customer follows the delivery status</small></div></div>
+    <div class="delivery-step"><div class="step-icon">📍</div><div><strong>Delivered</strong><small>Customer PIN and proof confirm handoff</small></div></div>
   </div>
 </div></section>
-<section class="section section-soft"><div class="container"><div class="section-head"><div class="eyebrow">One connected system</div><h2>Built for the full delivery workflow</h2><p>BeautyDrop connects the store, courier and customer from dispatch through proof of delivery.</p></div><div class="grid-3">
-  <article class="feature-card"><div class="feature-icon">🏪</div><h3>Store dashboard</h3><p>Create deliveries, manage products, view fees, track orders and see invoices in one place.</p></article>
-  <article class="feature-card"><div class="feature-icon">🚙</div><h3>Driver workflow</h3><p>See assigned jobs, verify pickup, update delivery status and capture delivery proof.</p></article>
-  <article class="feature-card"><div class="feature-icon">📱</div><h3>Customer tracking</h3><p>Customers can follow the delivery using a BeautyDrop tracking code without creating an account.</p></article>
+
+<section class="section section-soft" id="estimate"><div class="container"><div class="section-head"><div class="eyebrow">Quick delivery estimate</div><h2>How much will my delivery cost?</h2><p>Move the range meter to see an estimated BeautyDrop delivery price before creating an order.</p></div>
+<div class="calculator-card" data-calculator data-base="{{ pricing.base_fee }}" data-included="{{ pricing.included_km }}" data-perkm="{{ pricing.per_km }}" data-minimum="{{ pricing.minimum_fee }}" data-max="{{ pricing.maximum_radius }}" data-tax="{{ pricing.tax_rate }}" data-rush="{{ pricing.rush_surcharge }}">
+  <div class="calc-grid">
+    <div><label class="calc-label" for="home-km">Delivery distance</label><div class="range-row"><span>0 km</span><input id="home-km" class="range" type="range" min="0" max="{{ pricing.maximum_radius|int }}" step="0.5" value="8.5" data-home-km><span>{{ pricing.maximum_radius|int }} km</span></div><div class="distance-readout"><strong data-home-km-value>8.5 km</strong><span class="muted">Estimated road distance</span></div>
+      <div class="calc-options"><label><input type="radio" name="home_service" value="standard" checked data-home-service> Standard</label><label><input type="radio" name="home_service" value="express" data-home-service> Express</label></div>
+    </div>
+    <div class="estimate-result"><span>Estimated delivery</span><strong data-home-total>$0.00</strong><div class="estimate-breakdown"><div><span>Delivery fee</span><b data-home-fee>$0.00</b></div><div><span>Estimated tax</span><b data-home-tax>$0.00</b></div><div><span>Estimated arrival</span><b data-home-eta>—</b></div></div></div>
+  </div>
+  <p class="small muted" style="margin:18px 0 0">This is an estimate only. Final pricing can vary if distance, traffic, waiting time, special handling or delivery requirements change.</p>
 </div></div></section>
-<section class="section"><div class="container"><div class="section-head"><div class="eyebrow">How it works</div><h2>From beauty store to front door</h2></div><div class="grid-4">
-  <div class="how-card"><div class="how-num">1</div><h3>Customer orders</h3><p class="muted">The customer buys from their beauty store as usual.</p></div>
-  <div class="how-card"><div class="how-num">2</div><h3>Store dispatches</h3><p class="muted">The store creates a BeautyDrop delivery request.</p></div>
-  <div class="how-card"><div class="how-num">3</div><h3>Driver picks up</h3><p class="muted">A courier verifies the pickup and starts delivery.</p></div>
-  <div class="how-card"><div class="how-num">4</div><h3>Customer receives</h3><p class="muted">The handoff is confirmed with PIN and delivery proof.</p></div>
+
+<section class="section"><div class="container"><div class="section-head"><div class="eyebrow">How it works</div><h2>From beauty store to front door</h2></div><div class="grid-3">
+  <article class="how-card"><div class="how-num">1</div><h3>Customer orders</h3><p class="muted">The customer buys from a participating beauty store.</p></article>
+  <article class="how-card"><div class="how-num">2</div><h3>Store requests delivery</h3><p class="muted">The store logs into BeautyDrop and creates or schedules a delivery.</p></article>
+  <article class="how-card"><div class="how-num">3</div><h3>BeautyDrop delivers</h3><p class="muted">Admin assigns a driver, pickup is verified, and the customer tracks the handoff.</p></article>
 </div></div></section>
-<section class="section section-soft"><div class="container split"><div><div class="eyebrow">For beauty retailers</div><h2 style="font-size:2.7rem;line-height:1.05">Keep the sale. Add the convenience.</h2><p class="lead">Wig shops, beauty supply stores, hair retailers and cosmetic shops can offer local delivery without building their own courier operation.</p><ul class="list-check"><li>No replacement storefront required</li><li>Store-specific dashboard and order visibility</li><li>Clear distance-based delivery pricing</li><li>Delivery records for every completed job</li></ul><a class="btn btn-primary" href="{{ url_for('for_stores') }}">See BeautyDrop for stores</a></div><div class="feature-card"><div class="feature-icon">✨</div><h3>A delivery layer for the store you already have</h3><p>BeautyDrop is designed to sit beside your existing sales process. Staff enter the customer’s delivery details, the system calculates the fee, and the delivery moves through a verified workflow.</p><div class="order-card" style="margin-top:20px"><div class="order-top"><strong class="order-code">BD-4FC908A2</strong><span class="status PICKED_UP">PICKED UP</span></div><p><strong>Beauty order #1248</strong></p><p class="order-meta">12.4 km • Express • 1 package</p></div></div></div></section>
-<div class="container cta-band"><div><h2>Ready to make local beauty delivery easier?</h2><p>Open your store account and start using the BeautyDrop dashboard.</p></div><a class="btn" style="background:#fff;color:#6d28d9" href="{{ url_for('store_signup') }}">Create store account</a></div>
+<section class="section section-soft"><div class="container"><div class="section-head"><div class="eyebrow">Why BeautyDrop</div><h2>One system for the whole delivery</h2></div><div class="grid-3">
+{% for icon,title,text in [('⚡','Fast Local Delivery','Designed for local beauty orders across the GTA.'),('✓','Verified Pickup','Secure pickup codes confirm the right order leaves the store.'),('📍','Real-Time Tracking','Customers can track using a BeautyDrop code.'),('📸','Proof of Delivery','Delivery proof can be stored for completed jobs.'),('🔐','Secure Delivery PIN','Customer PIN verification helps protect handoff.'),('🏪','Store-Specific Orders','Each store sees only its own deliveries and records.')] %}<article class="feature-card"><div class="feature-icon">{{ icon }}</div><h3>{{ title }}</h3><p>{{ text }}</p></article>{% endfor %}
+</div></div></section>
+<section class="section"><div class="container split"><div><div class="eyebrow">For beauty stores</div><h2 style="font-size:2.7rem;line-height:1.05">Turn local orders into local deliveries.</h2><p class="lead">Store partners get a private workspace for upcoming deliveries, active jobs, history, products and invoices.</p><ul class="list-check"><li>Schedule deliveries for later</li><li>See estimated pricing before submitting</li><li>Track driver assignment and status</li><li>Keep each store's customer data separate</li></ul><a class="btn btn-primary" href="{{ url_for('store_signup') }}">Become a BeautyDrop Partner</a></div><div class="feature-card"><div class="feature-icon">✨</div><h3>Built for the store you already have</h3><p>BeautyDrop works beside your current sales process. Your staff creates a delivery, sees the cost, schedules the time and follows the job from pickup to completion.</p></div></div></section>
+<div class="container cta-band"><div><h2>Ready to start?</h2><p>Apply as a store partner or driver and enter the BeautyDrop delivery network.</p></div><div class="hero-actions"><a class="btn" style="background:#fff;color:#6d28d9" href="{{ url_for('store_signup') }}">Join as a Store</a><a class="btn" style="background:#f3e8ff;color:#6d28d9" href="{{ url_for('driver_signup') }}">Become a Driver</a></div></div>
 {% endblock %}

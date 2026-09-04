@@ -1,53 +1,31 @@
-# BeautyDrop Canada V6 — Full Website Launch Candidate
+# BeautyDrop Canada V7 Complete
 
-BeautyDrop is a Flask/PostgreSQL delivery platform for beauty retailers, drivers, customers and administrators.
+This build fixes the store login and delivery workflow and keeps the purple/white BeautyDrop design.
 
-## Website included
-- Full public homepage
-- About
-- For Stores
-- For Drivers
-- Pricing
-- Contact
-- Privacy Policy draft
-- Terms of Service draft
-- Store signup and login
-- Forgot/reset password
-- Store dashboard
-- Product management
-- Store invoices + optional Stripe Checkout
-- Driver dashboard
-- Admin operations dashboard
-- Public delivery tracking
-- QR tracking labels
-- Responsive purple/white BeautyDrop design
+## Working flow
 
-## Security and operations included
-- CSRF protection
-- Login and reset rate limits
-- Secure password hashing
-- Expiring single-use reset tokens
-- Secure session settings
-- Authorization checks by role/store/driver
-- Security headers
-- Private S3-compatible delivery-photo workflow
-- Optional Twilio SMS
-- Optional SMTP email
-- Optional Stripe payments/webhook
-- Optional Sentry monitoring
-- Render health endpoint
+Store application -> admin approval -> store login -> Store Dashboard -> Create Delivery -> schedule ASAP or later -> see estimated delivery fee/tax/ETA -> submit -> admin sees request -> admin assigns driver -> driver sees assigned job -> pickup verification -> status updates -> customer tracking -> delivery PIN/proof -> delivery history.
 
-## Render deployment
-1. Push the entire project to the GitHub repository.
-2. Render reads `render.yaml`.
-3. Set the required production environment values in Render, especially `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
-4. Deploy.
-5. Open `/health` and confirm HTTP 200 and `database: ok`.
-6. Sign in with the admin account you configured.
-7. Complete the external items in `LAUNCH_CHECKLIST.md` before accepting real customer data or payments.
+Driver application -> admin approval -> driver login -> Driver Dashboard.
 
-## Existing databases
-This build preserves the original Delivery/User/Invoice table columns and adds new tables with `db.create_all()`, which minimizes the risk of breaking an existing V6 database. For future schema changes, use Flask-Migrate/Alembic migrations rather than editing live tables manually.
+Admin Dashboard includes account approvals, dispatch assignment, invoices/payments, integration status, CSV export and editable delivery pricing. Homepage and store delivery form use the same pricing rules.
 
-## Important
-Do not use old `@beautydrop.local` demo credentials in production. If they already exist in the database from an earlier V6 deployment, disable them from the admin dashboard before launch.
+## Important URLs
+
+- `/` public homepage + range meter
+- `/signup/store` store application
+- `/signup/driver` driver application
+- `/login` role-aware login
+- `/store-dashboard` store workspace
+- `/store-dashboard/create-delivery` create/schedule delivery
+- `/driver-dashboard` driver workspace
+- `/admin-dashboard` admin workspace
+- `/track` public tracking
+
+## Deployment
+
+Designed for Render using `render.yaml`, Postgres, and Render Key Value.
+
+For an existing Render Blueprint, add any new `sync: false` environment variables manually in Render. At minimum set a strong `ADMIN_EMAIL` and `ADMIN_PASSWORD` so a new administrator can be created.
+
+Production integrations such as Stripe, Twilio, object storage, SMTP email and Sentry require your own external account credentials. Legal documents in this project are drafts and should be reviewed for your actual business before launch.
